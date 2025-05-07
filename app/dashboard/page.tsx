@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [addFundsAmount, setAddFundsAmount] = useState("")
   const [isAddingFunds, setIsAddingFunds] = useState(false)
   const [isAddFundsDialogOpen, setIsAddFundsDialogOpen] = useState(false)
+  const [hasTransactions, setHasTransactions] = useState(false)
 
   useEffect(() => {
     // Simulate data loading
@@ -65,8 +66,11 @@ export default function DashboardPage() {
       setIsLoading(false)
     }, 1500)
 
+    // Check if user has transactions
+    setHasTransactions(transactions.length > 0)
+
     return () => clearTimeout(timer)
-  }, [])
+  }, [transactions])
 
   const handleAddFunds = async () => {
     const amount = Number.parseFloat(addFundsAmount)
@@ -276,42 +280,52 @@ export default function DashboardPage() {
                           <CardDescription>Your wallet balance over time</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart
-                                data={chartData}
-                                margin={{
-                                  top: 10,
-                                  right: 30,
-                                  left: 0,
-                                  bottom: 0,
-                                }}
-                              >
-                                <defs>
-                                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "hsl(var(--background))",
-                                    borderColor: "hsl(var(--border))",
+                          {hasTransactions ? (
+                            <div className="h-[300px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                  data={chartData}
+                                  margin={{
+                                    top: 10,
+                                    right: 30,
+                                    left: 0,
+                                    bottom: 0,
                                   }}
-                                />
-                                <Area
-                                  type="monotone"
-                                  dataKey="value"
-                                  stroke="hsl(var(--primary))"
-                                  fillOpacity={1}
-                                  fill="url(#colorValue)"
-                                />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
+                                >
+                                  <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                                  <XAxis dataKey="name" />
+                                  <YAxis />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: "hsl(var(--background))",
+                                      borderColor: "hsl(var(--border))",
+                                    }}
+                                  />
+                                  <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="hsl(var(--primary))"
+                                    fillOpacity={1}
+                                    fill="url(#colorValue)"
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                              <BarChart3 className="mb-2 h-10 w-10 text-muted-foreground" />
+                              <p className="mb-2 text-lg font-medium">No balance history yet</p>
+                              <p className="text-sm text-muted-foreground">
+                                Your balance history will appear here once you start using your wallet.
+                              </p>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -328,33 +342,43 @@ export default function DashboardPage() {
                           <CardDescription>How your funds are allocated</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={pieData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={80}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                  labelLine={false}
-                                >
-                                  {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "hsl(var(--background))",
-                                    borderColor: "hsl(var(--border))",
-                                  }}
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
+                          {hasTransactions ? (
+                            <div className="h-[300px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    labelLine={false}
+                                  >
+                                    {pieData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: "hsl(var(--background))",
+                                      borderColor: "hsl(var(--border))",
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                              <CreditCard className="mb-2 h-10 w-10 text-muted-foreground" />
+                              <p className="mb-2 text-lg font-medium">No allocation data yet</p>
+                              <p className="text-sm text-muted-foreground">
+                                Your fund allocation will appear here once you start using your wallet.
+                              </p>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>

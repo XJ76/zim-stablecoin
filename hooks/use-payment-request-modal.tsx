@@ -4,12 +4,12 @@ import { create } from "zustand"
 
 interface PaymentRequestModalStore {
   isOpen: boolean
-  onOpen: () => void
-  onClose: () => void
+  openPaymentRequestModal: () => void
+  closePaymentRequestModal: () => void
 }
 
 export const usePaymentRequestModal = create<PaymentRequestModalStore>((set) => ({
   isOpen: false,
-  onOpen: () => set({ isOpen: true }),
-  onClose: () => set({ isOpen: false }),
+  openPaymentRequestModal: () => set({ isOpen: true }),
+  closePaymentRequestModal: () => set({ isOpen: false }),
 }))

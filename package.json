@@ -65,8 +65,8 @@
     "framer-motion": "latest",
     "@stripe/react-stripe-js": "latest",
     "react-intersection-observer": "latest",
-    "uuid": "latest",
-    "zustand": "latest"
+    "zustand": "latest",
+    "uuid": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

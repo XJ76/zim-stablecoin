@@ -3,9 +3,10 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { v4 as uuidv4 } from "uuid"
+import { useToast } from "@/components/ui/use-toast"
 
 // Types
-export type TransactionType = "send" | "receive" | "convert" | "add_funds" | "payment_request"
+export type TransactionType = "send" | "receive" | "convert" | "add_funds" | "payment_request" | "card_payment"
 export type NotificationType = "transaction" | "security" | "system"
 
 export interface Transaction {
@@ -17,6 +18,7 @@ export interface Transaction {
   to?: string
   status: "pending" | "completed" | "failed"
   description?: string
+  category?: string
 }
 
 export interface Card {
@@ -31,6 +33,12 @@ export interface Card {
   balance: number
   limit: number
   status: "active" | "inactive" | "frozen"
+  settings?: {
+    onlinePayments: boolean
+    internationalPayments: boolean
+    contactlessPayments: boolean
+    atmWithdrawals: boolean
+  }
 }
 
 export interface Notification {
@@ -108,17 +116,21 @@ interface AppContextType {
   setBalance: React.Dispatch<React.SetStateAction<number>>
   transactions: Transaction[]
   addTransaction: (transaction: Omit<Transaction, "id" | "date" | "status">) => void
+  deleteTransaction: (id: string) => void
   cards: Card[]
   addCard: (card: Omit<Card, "id">) => void
   updateCard: (id: string, updates: Partial<Card>) => void
+  deleteCard: (id: string) => void
   notifications: Notification[]
   addNotification: (notification: Omit<Notification, "id" | "date" | "read">) => void
   markNotificationAsRead: (id: string) => void
   markAllNotificationsAsRead: () => void
+  deleteNotification: (id: string) => void
   unreadNotificationsCount: number
   paymentRequests: PaymentRequest[]
   createPaymentRequest: (request: Omit<PaymentRequest, "id" | "date" | "status">) => void
   updatePaymentRequest: (id: string, status: PaymentRequest["status"]) => void
+  deletePaymentRequest: (id: string) => void
   walletAddress: string
   zwlRate: number
   isAuthenticated: boolean
@@ -142,11 +154,26 @@ interface AppContextType {
   updateDisplaySettings: (settings: Partial<User["settings"]["display"]>) => Promise<boolean>
   updateAccentColor: (color: string) => Promise<boolean>
   searchTransactions: (query: string) => Transaction[]
+  filterTransactions: (filters: {
+    type?: TransactionType[]
+    dateFrom?: Date
+    dateTo?: Date
+    amountMin?: number
+    amountMax?: number
+    status?: string[]
+  }) => Transaction[]
+  requestPhysicalCard: () => Promise<boolean>
+  freezeCard: (cardId: string, freeze: boolean) => Promise<boolean>
+  updateCardSettings: (cardId: string, settings: Partial<Card["settings"]>) => Promise<boolean>
+  requestLimitIncrease: (cardId: string, newLimit: number) => Promise<boolean>
+  topUpCard: (cardId: string, amount: number) => Promise<boolean>
+  makeCardPayment: (cardId: string, amount: number, merchant: string, category?: string) => Promise<boolean>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { toast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [balance, setBalance] = useState(0)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -228,12 +255,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notificationTitle = "Payment Request"
         notificationMessage = `A payment request for $${transaction.amount.toFixed(2)} has been created`
         break
+      case "card_payment":
+        notificationTitle = "Card Payment"
+        notificationMessage = `$${transaction.amount.toFixed(2)} paid to ${transaction.to}`
+        break
     }
 
     addNotification({
       type: "transaction",
       title: notificationTitle,
       message: notificationMessage,
+    })
+
+    // Show toast notification
+    toast({
+      title: notificationTitle,
+      description: notificationMessage,
+    })
+  }
+
+  const deleteTransaction = (id: string) => {
+    setTransactions((prev) => prev.filter((transaction) => transaction.id !== id))
+    toast({
+      title: "Transaction Deleted",
+      description: "The transaction has been deleted successfully.",
     })
   }
 
@@ -250,6 +295,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: "New Card Added",
       message: `A new ${card.type} card has been added to your account`,
     })
+
+    toast({
+      title: "Card Added",
+      description: `Your new ${card.type} card has been added successfully.`,
+    })
   }
 
   const updateCard = (id: string, updates: Partial<Card>) => {
@@ -261,6 +311,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return card
       }),
     )
+  }
+
+  const deleteCard = (id: string) => {
+    setCards((prev) => prev.filter((card) => card.id !== id))
+    toast({
+      title: "Card Deleted",
+      description: "The card has been deleted successfully.",
+    })
   }
 
   const addNotification = (notification: Omit<Notification, "id" | "date" | "read">) => {
@@ -287,6 +345,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markAllNotificationsAsRead = () => {
     setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })))
+    toast({
+      title: "Notifications Cleared",
+      description: "All notifications have been marked as read.",
+    })
+  }
+
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id))
   }
 
   const createPaymentRequest = (request: Omit<PaymentRequest, "id" | "date" | "status">) => {
@@ -304,6 +370,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: "Payment Request Created",
       message: `You created a payment request for $${request.amount.toFixed(2)}`,
     })
+
+    return newRequest
   }
 
   const updatePaymentRequest = (id: string, status: PaymentRequest["status"]) => {
@@ -324,6 +392,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message: `Your payment request for $${request.amount.toFixed(2)} has been ${status}`,
       })
     }
+  }
+
+  const deletePaymentRequest = (id: string) => {
+    setPaymentRequests((prev) => prev.filter((request) => request.id !== id))
+    toast({
+      title: "Payment Request Deleted",
+      description: "The payment request has been deleted successfully.",
+    })
   }
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -398,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Initialize with default balance if not set
             if (!localStorage.getItem("balance")) {
-              setBalance(0)
+              setBalance(1000)
             }
 
             // Initialize with default virtual card
@@ -412,9 +488,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 expiry: "09/27",
                 cvv: "***",
                 fullCvv: "123",
-                balance: 0,
+                balance: 750,
                 limit: 2000,
                 status: "active",
+                settings: {
+                  onlinePayments: true,
+                  internationalPayments: false,
+                  contactlessPayments: true,
+                  atmWithdrawals: true,
+                },
               }
               setCards([defaultCard])
             }
@@ -428,12 +510,113 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               })
             }
 
+            toast({
+              title: "Login Successful",
+              description: `Welcome back, ${parsedUser.firstName}!`,
+            })
+
             resolve(true)
           } else {
+            toast({
+              title: "Login Failed",
+              description: "Invalid email or password. Please try again.",
+              variant: "destructive",
+            })
             resolve(false)
           }
         } else {
-          resolve(false)
+          // For demo, create a default user if none exists
+          const defaultUser = {
+            id: uuidv4(),
+            firstName: "Tendai",
+            lastName: "Moyo",
+            email: email,
+            phone: "+263 77 123 4567",
+            address: "123 Samora Machel Ave, Harare, Zimbabwe",
+            bio: "New user on Zimbabwe Stablecoin platform.",
+            avatar: "/placeholder.svg?height=128&width=128",
+            joinDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+            verificationStatus: "verified",
+            occupation: "Software Developer",
+            website: "",
+            socialMedia: {
+              twitter: "",
+              linkedin: "",
+              facebook: "",
+            },
+            settings: {
+              language: "en",
+              currency: "USD",
+              dateFormat: "MM/DD/YYYY",
+              theme: "system",
+              accentColor: "#0ea5e9",
+              notifications: {
+                email: true,
+                push: true,
+                marketing: false,
+              },
+              security: {
+                twoFactor: false,
+                biometricLogin: true,
+                autoLock: true,
+              },
+              display: {
+                compactMode: false,
+                largeText: false,
+                reduceMotion: false,
+              },
+            },
+            sessions: [
+              {
+                id: uuidv4(),
+                device: "Chrome on Windows",
+                location: "Harare, Zimbabwe",
+                lastActive: new Date().toISOString(),
+                current: true,
+              },
+            ],
+          }
+
+          localStorage.setItem("registeredUser", JSON.stringify(defaultUser))
+          setUser(defaultUser)
+          setIsAuthenticated(true)
+          setBalance(1000)
+
+          // Create default card
+          const defaultCard: Card = {
+            id: uuidv4(),
+            type: "virtual",
+            number: "4539 **** **** 5271",
+            fullNumber: "4539 7852 3641 5271",
+            name: "TENDAI MOYO",
+            expiry: "09/27",
+            cvv: "***",
+            fullCvv: "123",
+            balance: 750,
+            limit: 2000,
+            status: "active",
+            settings: {
+              onlinePayments: true,
+              internationalPayments: false,
+              contactlessPayments: true,
+              atmWithdrawals: true,
+            },
+          }
+          setCards([defaultCard])
+
+          // Add welcome notification
+          addNotification({
+            type: "system",
+            title: "Welcome to Zimbabwe Stablecoin",
+            message: "Thank you for joining our platform. Start exploring our features!",
+          })
+
+          toast({
+            title: "Login Successful",
+            description: "Welcome to Zimbabwe Stablecoin!",
+          })
+
+          resolve(true)
         }
       }, 1000)
     })
@@ -505,7 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Auto login after registration
         setUser(newUser)
         setIsAuthenticated(true)
-        setBalance(0)
+        setBalance(1000)
         setTransactions([])
 
         // Create default virtual card
@@ -518,9 +701,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           expiry: "09/27",
           cvv: "***",
           fullCvv: "123",
-          balance: 0,
+          balance: 750,
           limit: 2000,
           status: "active",
+          settings: {
+            onlinePayments: true,
+            internationalPayments: false,
+            contactlessPayments: true,
+            atmWithdrawals: true,
+          },
         }
         setCards([defaultCard])
 
@@ -531,6 +720,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           message: "Thank you for joining our platform. Start exploring our features!",
         })
 
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created successfully!",
+        })
+
         resolve(true)
       }, 1000)
     })
@@ -539,6 +733,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setIsAuthenticated(false)
     setUser(null)
+    toast({
+      title: "Logged Out",
+      description: "You have been logged out successfully.",
+    })
   }
 
   const logoutAllDevices = async (): Promise<boolean> => {
@@ -559,8 +757,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             title: "Logged Out From All Devices",
             message: "You have been logged out from all devices",
           })
+          toast({
+            title: "Logged Out From All Devices",
+            description: "You have been logged out from all devices successfully.",
+          })
           resolve(true)
         } else {
+          toast({
+            title: "Error",
+            description: "Failed to log out from all devices. Please try again.",
+            variant: "destructive",
+          })
           resolve(false)
         }
       }, 1000)
@@ -583,11 +790,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       amount,
       description: "Added funds to wallet",
     })
+
+    toast({
+      title: "Funds Added",
+      description: `$${amount.toFixed(2)} has been added to your wallet.`,
+    })
   }
 
   const sendMoney = async (amount: number, recipient: string, note?: string): Promise<boolean> => {
     // Check if user has enough balance
-    if (balance < amount) return false
+    if (balance < amount) {
+      toast({
+        title: "Insufficient Funds",
+        description: "You don't have enough funds to complete this transaction.",
+        variant: "destructive",
+      })
+      return false
+    }
 
     // Simulate API call
     return new Promise((resolve) => {
@@ -607,6 +826,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           amount,
           to: recipient,
           description: note || `Sent to ${recipient}`,
+        })
+
+        toast({
+          title: "Money Sent",
+          description: `$${amount.toFixed(2)} has been sent to ${recipient}.`,
         })
 
         resolve(true)
@@ -635,6 +859,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           description: note || `Received from ${sender}`,
         })
 
+        toast({
+          title: "Money Received",
+          description: `$${amount.toFixed(2)} has been received from ${sender}.`,
+        })
+
         resolve(true)
       }, 1000)
     })
@@ -642,7 +871,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const convertCurrency = async (amount: number, from: string, to: string): Promise<boolean> => {
     // Check if user has enough balance
-    if (from === "USD" && balance < amount) return false
+    if (from === "USD" && balance < amount) {
+      toast({
+        title: "Insufficient Funds",
+        description: "You don't have enough funds to complete this conversion.",
+        variant: "destructive",
+      })
+      return false
+    }
 
     // Simulate API call
     return new Promise((resolve) => {
@@ -665,6 +901,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           from,
           to,
           description: `Converted ${amount} ${from} to ${to}`,
+        })
+
+        toast({
+          title: "Currency Converted",
+          description: `${amount} ${from} has been converted to ${to}.`,
         })
 
         resolve(true)
@@ -709,6 +950,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: "Transactions Exported",
       message: "Your transactions have been exported successfully",
     })
+
+    toast({
+      title: "Transactions Exported",
+      description: "Your transactions have been exported successfully.",
+    })
   }
 
   const updateUserProfile = async (updates: Partial<User>): Promise<boolean> => {
@@ -725,8 +971,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             message: "Your profile has been updated successfully",
           })
 
+          toast({
+            title: "Profile Updated",
+            description: "Your profile has been updated successfully.",
+          })
+
           resolve(true)
         } else {
+          toast({
+            title: "Error",
+            description: "Failed to update profile. Please try again.",
+            variant: "destructive",
+          })
           resolve(false)
         }
       }, 1000)
@@ -744,6 +1000,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           title: "Password Changed",
           message: "Your password has been changed successfully",
         })
+
+        toast({
+          title: "Password Changed",
+          description: "Your password has been changed successfully.",
+        })
+
         resolve(true)
       }, 1000)
     })
@@ -772,8 +1034,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             message: "Your security settings have been updated successfully",
           })
 
+          toast({
+            title: "Security Settings Updated",
+            description: "Your security settings have been updated successfully.",
+          })
+
           resolve(true)
         } else {
+          toast({
+            title: "Error",
+            description: "Failed to update security settings. Please try again.",
+            variant: "destructive",
+          })
           resolve(false)
         }
       }, 1000)
@@ -803,8 +1075,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             message: "Your display settings have been updated successfully",
           })
 
+          toast({
+            title: "Display Settings Updated",
+            description: "Your display settings have been updated successfully.",
+          })
+
           resolve(true)
         } else {
+          toast({
+            title: "Error",
+            description: "Failed to update display settings. Please try again.",
+            variant: "destructive",
+          })
           resolve(false)
         }
       }, 1000)
@@ -831,8 +1113,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             message: "Your accent color has been updated successfully",
           })
 
+          toast({
+            title: "Accent Color Updated",
+            description: "Your accent color has been updated successfully.",
+          })
+
           resolve(true)
         } else {
+          toast({
+            title: "Error",
+            description: "Failed to update accent color. Please try again.",
+            variant: "destructive",
+          })
           resolve(false)
         }
       }, 1000)
@@ -855,6 +1147,345 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })
   }
 
+  const filterTransactions = (filters: {
+    type?: TransactionType[]
+    dateFrom?: Date
+    dateTo?: Date
+    amountMin?: number
+    amountMax?: number
+    status?: string[]
+  }): Transaction[] => {
+    return transactions.filter((transaction) => {
+      // Filter by type
+      if (filters.type && filters.type.length > 0 && !filters.type.includes(transaction.type)) {
+        return false
+      }
+
+      // Filter by date range
+      if (filters.dateFrom && new Date(transaction.date) < filters.dateFrom) {
+        return false
+      }
+      if (filters.dateTo && new Date(transaction.date) > filters.dateTo) {
+        return false
+      }
+
+      // Filter by amount range
+      if (filters.amountMin !== undefined && transaction.amount < filters.amountMin) {
+        return false
+      }
+      if (filters.amountMax !== undefined && transaction.amount > filters.amountMax) {
+        return false
+      }
+
+      // Filter by status
+      if (filters.status && filters.status.length > 0 && !filters.status.includes(transaction.status)) {
+        return false
+      }
+
+      return true
+    })
+  }
+
+  const requestPhysicalCard = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Check if user already has a physical card
+        const existingPhysicalCard = cards.find((card) => card.type === "physical")
+
+        if (existingPhysicalCard) {
+          toast({
+            title: "Card Already Exists",
+            description: "You already have a physical card.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        // Create a new physical card
+        const newCard: Card = {
+          id: uuidv4(),
+          type: "physical",
+          number: "5412 **** **** 3456",
+          fullNumber: "5412 7654 3210 3456",
+          name: user ? `${user.firstName.toUpperCase()} ${user.lastName.toUpperCase()}` : "CARD HOLDER",
+          expiry: "12/28",
+          cvv: "***",
+          fullCvv: "456",
+          balance: 0,
+          limit: 5000,
+          status: "inactive", // Physical card starts as inactive until activated
+          settings: {
+            onlinePayments: true,
+            internationalPayments: false,
+            contactlessPayments: true,
+            atmWithdrawals: true,
+          },
+        }
+
+        addCard(newCard)
+
+        addNotification({
+          type: "system",
+          title: "Physical Card Requested",
+          message: "Your physical card has been requested and will be delivered within 5-7 business days.",
+        })
+
+        toast({
+          title: "Physical Card Requested",
+          description: "Your physical card has been requested and will be delivered within 5-7 business days.",
+        })
+
+        resolve(true)
+      }, 1500)
+    })
+  }
+
+  const freezeCard = async (cardId: string, freeze: boolean): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const card = cards.find((c) => c.id === cardId)
+
+        if (!card) {
+          toast({
+            title: "Card Not Found",
+            description: "The specified card could not be found.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        updateCard(cardId, { status: freeze ? "frozen" : "active" })
+
+        addNotification({
+          type: "security",
+          title: freeze ? "Card Frozen" : "Card Unfrozen",
+          message: freeze
+            ? "Your card has been frozen. No transactions will be processed."
+            : "Your card has been unfrozen and is now active.",
+        })
+
+        toast({
+          title: freeze ? "Card Frozen" : "Card Unfrozen",
+          description: freeze
+            ? "Your card has been frozen. No transactions will be processed."
+            : "Your card has been unfrozen and is now active.",
+        })
+
+        resolve(true)
+      }, 1000)
+    })
+  }
+
+  const updateCardSettings = async (cardId: string, settings: Partial<Card["settings"]>): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const card = cards.find((c) => c.id === cardId)
+
+        if (!card) {
+          toast({
+            title: "Card Not Found",
+            description: "The specified card could not be found.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        updateCard(cardId, {
+          settings: {
+            ...card.settings,
+            ...settings,
+          },
+        })
+
+        addNotification({
+          type: "system",
+          title: "Card Settings Updated",
+          message: "Your card settings have been updated successfully.",
+        })
+
+        toast({
+          title: "Card Settings Updated",
+          description: "Your card settings have been updated successfully.",
+        })
+
+        resolve(true)
+      }, 1000)
+    })
+  }
+
+  const requestLimitIncrease = async (cardId: string, newLimit: number): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const card = cards.find((c) => c.id === cardId)
+
+        if (!card) {
+          toast({
+            title: "Card Not Found",
+            description: "The specified card could not be found.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        if (newLimit <= card.limit) {
+          toast({
+            title: "Invalid Limit",
+            description: "The new limit must be greater than the current limit.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        updateCard(cardId, { limit: newLimit })
+
+        addNotification({
+          type: "system",
+          title: "Card Limit Increased",
+          message: `Your card limit has been increased to $${newLimit.toFixed(2)}.`,
+        })
+
+        toast({
+          title: "Card Limit Increased",
+          description: `Your card limit has been increased to $${newLimit.toFixed(2)}.`,
+        })
+
+        resolve(true)
+      }, 1500)
+    })
+  }
+
+  const topUpCard = async (cardId: string, amount: number): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const card = cards.find((c) => c.id === cardId)
+
+        if (!card) {
+          toast({
+            title: "Card Not Found",
+            description: "The specified card could not be found.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        if (amount <= 0) {
+          toast({
+            title: "Invalid Amount",
+            description: "The amount must be greater than 0.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        updateCard(cardId, { balance: card.balance + amount })
+        setBalance((prev) => prev + amount)
+
+        addTransaction({
+          type: "add_funds",
+          amount,
+          description: `Added funds to ${card.type} card`,
+        })
+
+        addNotification({
+          type: "transaction",
+          title: "Card Topped Up",
+          message: `$${amount.toFixed(2)} has been added to your ${card.type} card.`,
+        })
+
+        toast({
+          title: "Card Topped Up",
+          description: `$${amount.toFixed(2)} has been added to your ${card.type} card.`,
+        })
+
+        resolve(true)
+      }, 1000)
+    })
+  }
+
+  const makeCardPayment = async (
+    cardId: string,
+    amount: number,
+    merchant: string,
+    category?: string,
+  ): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const card = cards.find((c) => c.id === cardId)
+
+        if (!card) {
+          toast({
+            title: "Card Not Found",
+            description: "The specified card could not be found.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        if (card.status === "frozen") {
+          toast({
+            title: "Card Frozen",
+            description: "This card is frozen and cannot be used for payments.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        if (amount <= 0) {
+          toast({
+            title: "Invalid Amount",
+            description: "The amount must be greater than 0.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        if (card.balance < amount) {
+          toast({
+            title: "Insufficient Funds",
+            description: "Your card does not have sufficient funds for this payment.",
+            variant: "destructive",
+          })
+          resolve(false)
+          return
+        }
+
+        updateCard(cardId, { balance: card.balance - amount })
+        setBalance((prev) => prev - amount)
+
+        addTransaction({
+          type: "card_payment",
+          amount,
+          to: merchant,
+          description: `Payment to ${merchant}`,
+          category,
+        })
+
+        addNotification({
+          type: "transaction",
+          title: "Card Payment",
+          message: `$${amount.toFixed(2)} has been paid to ${merchant} using your ${card.type} card.`,
+        })
+
+        toast({
+          title: "Payment Successful",
+          description: `$${amount.toFixed(2)} has been paid to ${merchant}.`,
+        })
+
+        resolve(true)
+      }, 1000)
+    })
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -864,17 +1495,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBalance,
         transactions,
         addTransaction,
+        deleteTransaction,
         cards,
         addCard,
         updateCard,
+        deleteCard,
         notifications,
         addNotification,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        deleteNotification,
         unreadNotificationsCount,
         paymentRequests,
         createPaymentRequest,
         updatePaymentRequest,
+        deletePaymentRequest,
         walletAddress,
         zwlRate,
         isAuthenticated,
@@ -893,6 +1528,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateDisplaySettings,
         updateAccentColor,
         searchTransactions,
+        filterTransactions,
+        requestPhysicalCard,
+        freezeCard,
+        updateCardSettings,
+        requestLimitIncrease,
+        topUpCard,
+        makeCardPayment,
       }}
     >
       {children}

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { CreditCard } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,115 +20,99 @@ import { useToast } from "@/components/ui/use-toast"
 
 interface PaymentRequestModalProps {
   open: boolean
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
 }
 
-export function PaymentRequestModal({ open, onClose }: PaymentRequestModalProps) {
+export function PaymentRequestModal({ open, onOpenChange }: PaymentRequestModalProps) {
   const { createPaymentRequest } = useApp()
   const { toast } = useToast()
   const [amount, setAmount] = useState("")
   const [recipient, setRecipient] = useState("")
   const [description, setDescription] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate amount
-    const numAmount = Number.parseFloat(amount)
-    if (isNaN(numAmount) || numAmount <= 0) {
+    if (!amount || Number.parseFloat(amount) <= 0) {
       toast({
         title: "Invalid amount",
-        description: "Please enter a valid amount greater than zero.",
+        description: "Please enter a valid amount greater than 0.",
         variant: "destructive",
       })
       return
     }
 
-    setIsCreating(true)
+    setIsSubmitting(true)
 
-    try {
+    setTimeout(() => {
       createPaymentRequest({
-        amount: numAmount,
+        amount: Number.parseFloat(amount),
+        to: recipient,
         description,
-        to: recipient || undefined,
       })
 
       toast({
-        title: "Payment request created",
-        description: "Your payment request has been created successfully.",
+        title: "Payment Request Created",
+        description: `Your payment request for $${Number.parseFloat(amount).toFixed(2)} has been created.`,
       })
 
-      // Reset form and close modal
+      // Reset form
       setAmount("")
       setRecipient("")
       setDescription("")
-      onClose()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "There was an error creating your payment request. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreating(false)
-    }
+      setIsSubmitting(false)
+      onOpenChange(false)
+    }, 1000)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-primary" />
-            Create Payment Request
-          </DialogTitle>
-          <DialogDescription>Create a payment request with a specific amount that others can pay.</DialogDescription>
+          <DialogTitle>Create Payment Request</DialogTitle>
+          <DialogDescription>Create a payment request that you can share with others.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="amount">Amount (USD)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="0.00"
-                  className="pl-8"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                />
-              </div>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient (Optional)</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="recipient">Recipient (optional)</Label>
               <Input
                 id="recipient"
-                placeholder="Enter recipient's name or address"
+                placeholder="Email or name"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Leave blank to create a request that anyone can pay.</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description (optional)</Label>
               <Textarea
                 id="description"
-                placeholder="What is this payment request for?"
+                placeholder="What is this payment for?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                required
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isCreating}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating}>
-              {isCreating ? (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
                   Creating...

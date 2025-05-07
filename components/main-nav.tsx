@@ -100,7 +100,7 @@ export default function MainNav() {
                 <Link href="/login">Sign In</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/signup">Sign Up</Link>
               </Button>
             </div>
           </nav>
@@ -172,8 +172,8 @@ export default function MainNav() {
                     </Link>
                   </Button>
                   <Button size="sm" asChild>
-                    <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                      Dashboard
+                    <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                      Sign Up
                     </Link>
                   </Button>
                 </div>

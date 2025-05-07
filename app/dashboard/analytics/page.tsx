@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowLeft, BarChart3, Calendar, DollarSign, Download, PieChart, TrendingDown, TrendingUp } from "lucide-react"
@@ -25,9 +25,25 @@ import {
 } from "recharts"
 import { ThemeSelector } from "@/components/theme-selector"
 import DashboardLayout from "@/components/dashboard-layout"
+import { useApp } from "@/context/app-context"
 
 // Sample data for charts
-const monthlyData = [
+const emptyMonthlyData = [
+  { name: "Jan", income: 0, expenses: 0 },
+  { name: "Feb", income: 0, expenses: 0 },
+  { name: "Mar", income: 0, expenses: 0 },
+  { name: "Apr", income: 0, expenses: 0 },
+  { name: "May", income: 0, expenses: 0 },
+  { name: "Jun", income: 0, expenses: 0 },
+  { name: "Jul", income: 0, expenses: 0 },
+  { name: "Aug", income: 0, expenses: 0 },
+  { name: "Sep", income: 0, expenses: 0 },
+  { name: "Oct", income: 0, expenses: 0 },
+  { name: "Nov", income: 0, expenses: 0 },
+  { name: "Dec", income: 0, expenses: 0 },
+]
+
+const sampleMonthlyData = [
   { name: "Jan", income: 1200, expenses: 900 },
   { name: "Feb", income: 1400, expenses: 1000 },
   { name: "Mar", income: 1300, expenses: 1100 },
@@ -42,7 +58,9 @@ const monthlyData = [
   { name: "Dec", income: 2500, expenses: 2000 },
 ]
 
-const categoryData = [
+const emptyCategoryData = [{ name: "No Data", value: 100 }]
+
+const sampleCategoryData = [
   { name: "Food & Dining", value: 30 },
   { name: "Transportation", value: 15 },
   { name: "Entertainment", value: 10 },
@@ -52,10 +70,30 @@ const categoryData = [
 ]
 
 const COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280"]
+const EMPTY_COLORS = ["#d1d5db"]
 
 export default function AnalyticsPage() {
   const [timeframe, setTimeframe] = useState("year")
   const [activeTab, setActiveTab] = useState("overview")
+  const { transactions } = useApp()
+  const [hasTransactions, setHasTransactions] = useState(false)
+  const [monthlyData, setMonthlyData] = useState(emptyMonthlyData)
+  const [categoryData, setCategoryData] = useState(emptyCategoryData)
+
+  useEffect(() => {
+    // Check if there are any transactions
+    setHasTransactions(transactions.length > 0)
+
+    // If there are transactions, use sample data for demonstration
+    // In a real app, you would calculate this from actual transactions
+    if (transactions.length > 0) {
+      setMonthlyData(sampleMonthlyData)
+      setCategoryData(sampleCategoryData)
+    } else {
+      setMonthlyData(emptyMonthlyData)
+      setCategoryData(emptyCategoryData)
+    }
+  }, [transactions])
 
   return (
     <DashboardLayout>
@@ -89,6 +127,33 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
+        {!hasTransactions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-6"
+          >
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <BarChart3 className="mb-4 h-16 w-16 text-muted-foreground" />
+                <h2 className="mb-2 text-xl font-semibold">No Transaction Data Yet</h2>
+                <p className="mb-6 max-w-md text-muted-foreground">
+                  Start using your wallet to send, receive, or convert money to see your financial analytics.
+                </p>
+                <div className="flex gap-4">
+                  <Button asChild>
+                    <Link href="/dashboard/send">Send Money</Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/dashboard/receive">Receive Money</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -106,9 +171,14 @@ export default function AnalyticsPage() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">$4,550.25</div>
+                    <div className="text-2xl font-bold">${hasTransactions ? "4,550.25" : "0.00"}</div>
                     <p className="text-xs text-muted-foreground">
-                      <span className="text-green-500">+12.5%</span> from last month
+                      {hasTransactions ? (
+                        <span className="text-green-500">+12.5%</span>
+                      ) : (
+                        <span className="text-muted">0%</span>
+                      )}{" "}
+                      from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -118,9 +188,14 @@ export default function AnalyticsPage() {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">$2,250.00</div>
+                    <div className="text-2xl font-bold">${hasTransactions ? "2,250.00" : "0.00"}</div>
                     <p className="text-xs text-muted-foreground">
-                      <span className="text-green-500">+8.2%</span> from last month
+                      {hasTransactions ? (
+                        <span className="text-green-500">+8.2%</span>
+                      ) : (
+                        <span className="text-muted">0%</span>
+                      )}{" "}
+                      from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -130,9 +205,14 @@ export default function AnalyticsPage() {
                     <TrendingDown className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">$1,750.50</div>
+                    <div className="text-2xl font-bold">${hasTransactions ? "1,750.50" : "0.00"}</div>
                     <p className="text-xs text-muted-foreground">
-                      <span className="text-red-500">+5.1%</span> from last month
+                      {hasTransactions ? (
+                        <span className="text-red-500">+5.1%</span>
+                      ) : (
+                        <span className="text-muted">0%</span>
+                      )}{" "}
+                      from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -142,9 +222,14 @@ export default function AnalyticsPage() {
                     <PieChart className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">22.2%</div>
+                    <div className="text-2xl font-bold">{hasTransactions ? "22.2%" : "0%"}</div>
                     <p className="text-xs text-muted-foreground">
-                      <span className="text-green-500">+2.5%</span> from last month
+                      {hasTransactions ? (
+                        <span className="text-green-500">+2.5%</span>
+                      ) : (
+                        <span className="text-muted">0%</span>
+                      )}{" "}
+                      from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -196,6 +281,11 @@ export default function AnalyticsPage() {
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
+                    {!hasTransactions && (
+                      <div className="mt-4 text-center text-sm text-muted-foreground">
+                        No transaction data available. This is a preview of how your chart will look.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -219,7 +309,10 @@ export default function AnalyticsPage() {
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
                             {categoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={hasTransactions ? COLORS[index % COLORS.length] : EMPTY_COLORS[0]}
+                              />
                             ))}
                           </Pie>
                           <Tooltip
@@ -232,6 +325,11 @@ export default function AnalyticsPage() {
                         </RePieChart>
                       </ResponsiveContainer>
                     </div>
+                    {!hasTransactions && (
+                      <div className="mt-4 text-center text-sm text-muted-foreground">
+                        No expense data available. Start making transactions to see your spending breakdown.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -265,6 +363,11 @@ export default function AnalyticsPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
+                    {!hasTransactions && (
+                      <div className="mt-4 text-center text-sm text-muted-foreground">
+                        No spending data available. This is a preview of how your chart will look.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -276,50 +379,60 @@ export default function AnalyticsPage() {
                     <CardDescription>Key observations about your finances</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="rounded-lg border p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                            <TrendingUp className="h-5 w-5 text-green-600" />
+                    {hasTransactions ? (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                              <TrendingUp className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">Income Growth</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Your income has increased by 15% compared to last year.
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold">Income Growth</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Your income has increased by 15% compared to last year.
-                            </p>
+                        </div>
+                        <div className="rounded-lg border p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                              <BarChart3 className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">Spending Pattern</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Food & Dining is your highest expense category at 30% of total spending.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                              <Calendar className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">Seasonal Trends</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Your spending tends to increase during December and January.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="rounded-lg border p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                            <BarChart3 className="h-5 w-5 text-red-600" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">Spending Pattern</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Food & Dining is your highest expense category at 30% of total spending.
-                            </p>
-                          </div>
-                        </div>
+                    ) : (
+                      <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                        <BarChart3 className="mb-2 h-10 w-10 text-muted-foreground" />
+                        <p className="mb-2 text-lg font-medium">No insights available yet</p>
+                        <p className="text-sm text-muted-foreground">
+                          Start making transactions to receive personalized financial insights.
+                        </p>
                       </div>
-                      <div className="rounded-lg border p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                            <Calendar className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">Seasonal Trends</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Your spending tends to increase during December and January.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" disabled={!hasTransactions}>
                       View Detailed Analysis
                     </Button>
                   </CardFooter>
@@ -335,86 +448,99 @@ export default function AnalyticsPage() {
                 <CardDescription>Detailed breakdown of your income sources</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={monthlyData}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            borderColor: "hsl(var(--border))",
+                {hasTransactions ? (
+                  <div className="space-y-6">
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={monthlyData}
+                          margin={{
+                            top: 10,
+                            right: 30,
+                            left: 0,
+                            bottom: 0,
                           }}
-                        />
-                        <Bar dataKey="income" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                        >
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              borderColor: "hsl(var(--border))",
+                            }}
+                          />
+                          <Bar dataKey="income" fill="#10b981" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Income Sources</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full bg-primary"></div>
+                            <span>Salary</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">$1,800.00</span>
+                            <span className="text-sm text-muted-foreground">80%</span>
+                          </div>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div className="h-2 w-4/5 rounded-full bg-primary"></div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                            <span>Freelance Work</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">$300.00</span>
+                            <span className="text-sm text-muted-foreground">13%</span>
+                          </div>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div className="h-2 w-[13%] rounded-full bg-blue-500"></div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full bg-amber-500"></div>
+                            <span>Investments</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">$150.00</span>
+                            <span className="text-sm text-muted-foreground">7%</span>
+                          </div>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div className="h-2 w-[7%] rounded-full bg-amber-500"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Income Sources</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-primary"></div>
-                          <span>Salary</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">$1,800.00</span>
-                          <span className="text-sm text-muted-foreground">80%</span>
-                        </div>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 w-4/5 rounded-full bg-primary"></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-                          <span>Freelance Work</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">$300.00</span>
-                          <span className="text-sm text-muted-foreground">13%</span>
-                        </div>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 w-[13%] rounded-full bg-blue-500"></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-amber-500"></div>
-                          <span>Investments</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">$150.00</span>
-                          <span className="text-sm text-muted-foreground">7%</span>
-                        </div>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 w-[7%] rounded-full bg-amber-500"></div>
-                      </div>
-                    </div>
+                ) : (
+                  <div className="flex h-60 flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                    <TrendingUp className="mb-2 h-10 w-10 text-muted-foreground" />
+                    <p className="mb-2 text-lg font-medium">No income data available</p>
+                    <p className="mb-6 text-sm text-muted-foreground">
+                      Start receiving money to see your income analysis.
+                    </p>
+                    <Button asChild>
+                      <Link href="/dashboard/receive">Receive Money</Link>
+                    </Button>
                   </div>
-                </div>
+                )}
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled={!hasTransactions}>
                   Download Income Report
                 </Button>
               </CardFooter>
@@ -428,61 +554,74 @@ export default function AnalyticsPage() {
                 <CardDescription>Detailed breakdown of your spending</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RePieChart>
-                        <Pie
-                          data={categoryData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {categoryData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            borderColor: "hsl(var(--border))",
-                          }}
-                        />
-                        <Legend />
-                      </RePieChart>
-                    </ResponsiveContainer>
-                  </div>
+                {hasTransactions ? (
+                  <div className="space-y-6">
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RePieChart>
+                          <Pie
+                            data={categoryData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {categoryData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              borderColor: "hsl(var(--border))",
+                            }}
+                          />
+                          <Legend />
+                        </RePieChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Top Expenses</h3>
                     <div className="space-y-4">
-                      {[
-                        { merchant: "Supermarket", date: "2023-03-15", amount: 120.5, category: "Food & Dining" },
-                        { merchant: "Fuel Station", date: "2023-03-12", amount: 45.0, category: "Transportation" },
-                        { merchant: "Internet Provider", date: "2023-03-10", amount: 60.0, category: "Utilities" },
-                        { merchant: "Shopping Mall", date: "2023-03-05", amount: 85.75, category: "Shopping" },
-                        { merchant: "Cinema", date: "2023-03-02", amount: 25.0, category: "Entertainment" },
-                      ].map((expense, index) => (
-                        <div key={index} className="flex items-center justify-between rounded-lg border p-4">
-                          <div>
-                            <p className="font-medium">{expense.merchant}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(expense.date).toLocaleDateString()} • {expense.category}
-                            </p>
+                      <h3 className="text-lg font-medium">Top Expenses</h3>
+                      <div className="space-y-4">
+                        {[
+                          { merchant: "Supermarket", date: "2023-03-15", amount: 120.5, category: "Food & Dining" },
+                          { merchant: "Fuel Station", date: "2023-03-12", amount: 45.0, category: "Transportation" },
+                          { merchant: "Internet Provider", date: "2023-03-10", amount: 60.0, category: "Utilities" },
+                          { merchant: "Shopping Mall", date: "2023-03-05", amount: 85.75, category: "Shopping" },
+                          { merchant: "Cinema", date: "2023-03-02", amount: 25.0, category: "Entertainment" },
+                        ].map((expense, index) => (
+                          <div key={index} className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                              <p className="font-medium">{expense.merchant}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(expense.date).toLocaleDateString()} • {expense.category}
+                              </p>
+                            </div>
+                            <p className="font-medium text-red-600">-${expense.amount.toFixed(2)}</p>
                           </div>
-                          <p className="font-medium text-red-600">-${expense.amount.toFixed(2)}</p>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex h-60 flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                    <TrendingDown className="mb-2 h-10 w-10 text-muted-foreground" />
+                    <p className="mb-2 text-lg font-medium">No expense data available</p>
+                    <p className="mb-6 text-sm text-muted-foreground">
+                      Start making payments to see your expense analysis.
+                    </p>
+                    <Button asChild>
+                      <Link href="/dashboard/send">Send Money</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled={!hasTransactions}>
                   Download Expense Report
                 </Button>
               </CardFooter>
@@ -496,104 +635,117 @@ export default function AnalyticsPage() {
                 <CardDescription>Track your savings progress</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border p-4">
-                      <h3 className="mb-2 text-lg font-medium">Savings Rate</h3>
-                      <div className="text-3xl font-bold">22.2%</div>
-                      <p className="text-sm text-muted-foreground">of your income is being saved</p>
-                      <div className="mt-4 h-2 rounded-full bg-muted">
-                        <div className="h-2 w-[22%] rounded-full bg-primary"></div>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Target: 25% • <span className="text-green-500">+2.5%</span> from last month
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border p-4">
-                      <h3 className="mb-2 text-lg font-medium">Emergency Fund</h3>
-                      <div className="text-3xl font-bold">$3,000</div>
-                      <p className="text-sm text-muted-foreground">of $6,000 target (3 months expenses)</p>
-                      <div className="mt-4 h-2 rounded-full bg-muted">
-                        <div className="h-2 w-1/2 rounded-full bg-amber-500"></div>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">50% complete • Est. completion in 6 months</p>
-                    </div>
-                  </div>
-
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={monthlyData}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            borderColor: "hsl(var(--border))",
-                          }}
-                        />
-                        <Area type="monotone" dataKey="income" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
-                        <Area type="monotone" dataKey="expenses" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="rounded-lg border p-4">
-                    <h3 className="mb-4 text-lg font-medium">Savings Goals</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Emergency Fund</p>
-                            <p className="text-sm text-muted-foreground">$3,000 of $6,000</p>
-                          </div>
-                          <p className="text-sm font-medium">50%</p>
+                {hasTransactions ? (
+                  <div className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="rounded-lg border p-4">
+                        <h3 className="mb-2 text-lg font-medium">Savings Rate</h3>
+                        <div className="text-3xl font-bold">22.2%</div>
+                        <p className="text-sm text-muted-foreground">of your income is being saved</p>
+                        <div className="mt-4 h-2 rounded-full bg-muted">
+                          <div className="h-2 w-[22%] rounded-full bg-primary"></div>
                         </div>
-                        <div className="h-2 rounded-full bg-muted">
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Target: 25% • <span className="text-green-500">+2.5%</span> from last month
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg border p-4">
+                        <h3 className="mb-2 text-lg font-medium">Emergency Fund</h3>
+                        <div className="text-3xl font-bold">$3,000</div>
+                        <p className="text-sm text-muted-foreground">of $6,000 target (3 months expenses)</p>
+                        <div className="mt-4 h-2 rounded-full bg-muted">
                           <div className="h-2 w-1/2 rounded-full bg-amber-500"></div>
                         </div>
+                        <p className="mt-2 text-xs text-muted-foreground">50% complete • Est. completion in 6 months</p>
                       </div>
+                    </div>
 
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">New Laptop</p>
-                            <p className="text-sm text-muted-foreground">$800 of $1,200</p>
-                          </div>
-                          <p className="text-sm font-medium">67%</p>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted">
-                          <div className="h-2 w-[67%] rounded-full bg-blue-500"></div>
-                        </div>
-                      </div>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={monthlyData}
+                          margin={{
+                            top: 10,
+                            right: 30,
+                            left: 0,
+                            bottom: 0,
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              borderColor: "hsl(var(--border))",
+                            }}
+                          />
+                          <Area type="monotone" dataKey="income" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                          <Area type="monotone" dataKey="expenses" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Vacation</p>
-                            <p className="text-sm text-muted-foreground">$500 of $2,000</p>
+                    <div className="rounded-lg border p-4">
+                      <h3 className="mb-4 text-lg font-medium">Savings Goals</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="mb-2 flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Emergency Fund</p>
+                              <p className="text-sm text-muted-foreground">$3,000 of $6,000</p>
+                            </div>
+                            <p className="text-sm font-medium">50%</p>
                           </div>
-                          <p className="text-sm font-medium">25%</p>
+                          <div className="h-2 rounded-full bg-muted">
+                            <div className="h-2 w-1/2 rounded-full bg-amber-500"></div>
+                          </div>
                         </div>
-                        <div className="h-2 rounded-full bg-muted">
-                          <div className="h-2 w-1/4 rounded-full bg-purple-500"></div>
+
+                        <div>
+                          <div className="mb-2 flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">New Laptop</p>
+                              <p className="text-sm text-muted-foreground">$800 of $1,200</p>
+                            </div>
+                            <p className="text-sm font-medium">67%</p>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted">
+                            <div className="h-2 w-[67%] rounded-full bg-blue-500"></div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="mb-2 flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">Vacation</p>
+                              <p className="text-sm text-muted-foreground">$500 of $2,000</p>
+                            </div>
+                            <p className="text-sm font-medium">25%</p>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted">
+                            <div className="h-2 w-1/4 rounded-full bg-purple-500"></div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex h-60 flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
+                    <PieChart className="mb-2 h-10 w-10 text-muted-foreground" />
+                    <p className="mb-2 text-lg font-medium">No savings data available</p>
+                    <p className="mb-6 text-sm text-muted-foreground">
+                      Start saving money to track your progress towards financial goals.
+                    </p>
+                    <Button asChild>
+                      <Link href="/dashboard/settings">Set Savings Goals</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled={!hasTransactions}>
                   Add New Savings Goal
                 </Button>
               </CardFooter>
