@@ -173,4 +173,3 @@ export default function HeroAnimation() {
     </motion.div>
   )
 }
-

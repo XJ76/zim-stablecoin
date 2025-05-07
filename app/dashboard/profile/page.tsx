@@ -14,27 +14,53 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ThemeSelector } from "@/components/theme-selector"
 import DashboardLayout from "@/components/dashboard-layout"
+import { useApp } from "@/context/app-context"
+import { useToast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
 
 export default function ProfilePage() {
+  const { user, updateUserProfile } = useApp()
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("personal")
   const [isEditing, setIsEditing] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const user = {
-    name: "Tendai Moyo",
-    email: "tendai.moyo@example.com",
-    phone: "+263 77 123 4567",
-    address: "123 Samora Machel Ave, Harare, Zimbabwe",
-    bio: "Entrepreneur and tech enthusiast based in Harare. Passionate about digital currencies and financial inclusion in Zimbabwe.",
-    avatar: "/placeholder.svg?height=128&width=128",
-    joinDate: "January 2023",
-    verificationStatus: "Verified",
-    occupation: "Business Owner",
-    website: "www.tendaimoyo.com",
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    address: user?.address || "",
+    occupation: user?.occupation || "",
+    website: user?.website || "",
+    bio: user?.bio || "",
     socialMedia: {
-      twitter: "@tendai_moyo",
-      linkedin: "tendaimoyo",
-      facebook: "tendaimoyo",
+      twitter: user?.socialMedia?.twitter || "",
+      linkedin: user?.socialMedia?.linkedin || "",
+      facebook: user?.socialMedia?.facebook || "",
     },
+  })
+
+  const handleSaveProfile = async () => {
+    setIsUpdating(true)
+    try {
+      await updateUserProfile({
+        ...formData,
+      })
+      setIsEditing(false)
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error updating your profile. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   return (
@@ -70,12 +96,9 @@ export default function ProfilePage() {
                 <div className="flex flex-col items-center">
                   <div className="relative mb-4">
                     <Avatar className="h-32 w-32">
-                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.firstName} />
                       <AvatarFallback>
-                        {user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
+                        {user?.firstName && user?.lastName ? `${user.firstName[0]}${user.lastName[0]}` : "U"}
                       </AvatarFallback>
                     </Avatar>
                     {isEditing && (
@@ -88,39 +111,39 @@ export default function ProfilePage() {
                       </Button>
                     )}
                   </div>
-                  <h2 className="text-xl font-bold">{user.name}</h2>
-                  <p className="text-sm text-muted-foreground">{user.occupation}</p>
+                  <h2 className="text-xl font-bold">{user ? `${user.firstName} ${user.lastName}` : ""}</h2>
+                  <p className="text-sm text-muted-foreground">{user?.occupation}</p>
                   <div className="mt-2 flex items-center gap-1">
                     <Badge variant="outline" className="flex items-center gap-1">
                       <Verified className="h-3 w-3 text-blue-500" />
-                      <span>{user.verificationStatus}</span>
+                      <span>{user?.verificationStatus}</span>
                     </Badge>
                   </div>
                   <div className="mt-4 w-full space-y-3">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.email}</span>
+                      <span className="text-sm">{user?.email}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.phone}</span>
+                      <span className="text-sm">{user?.phone}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.address}</span>
+                      <span className="text-sm">{user?.address}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.website}</span>
+                      <span className="text-sm">{user?.website}</span>
                     </div>
                   </div>
                   <div className="mt-6 w-full">
                     <h3 className="mb-2 text-sm font-medium">Bio</h3>
-                    <p className="text-sm text-muted-foreground">{user.bio}</p>
+                    <p className="text-sm text-muted-foreground">{user?.bio}</p>
                   </div>
                   <div className="mt-6 w-full">
                     <h3 className="mb-2 text-sm font-medium">Member Since</h3>
-                    <p className="text-sm text-muted-foreground">{user.joinDate}</p>
+                    <p className="text-sm text-muted-foreground">{user?.joinDate}</p>
                   </div>
                 </div>
               </CardContent>
@@ -154,40 +177,75 @@ export default function ProfilePage() {
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="first-name">First Name</Label>
-                            <Input id="first-name" defaultValue="Tendai" />
+                            <Input
+                              id="first-name"
+                              value={formData.firstName}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="last-name">Last Name</Label>
-                            <Input id="last-name" defaultValue="Moyo" />
+                            <Input
+                              id="last-name"
+                              value={formData.lastName}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+                            />
                           </div>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" defaultValue={user.email} />
+                            <Input
+                              id="email"
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" defaultValue={user.phone} />
+                            <Input
+                              id="phone"
+                              type="tel"
+                              value={formData.phone}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                            />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="address">Address</Label>
-                          <Input id="address" defaultValue={user.address} />
+                          <Input
+                            id="address"
+                            value={formData.address}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                          />
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="occupation">Occupation</Label>
-                            <Input id="occupation" defaultValue={user.occupation} />
+                            <Input
+                              id="occupation"
+                              value={formData.occupation}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, occupation: e.target.value }))}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="website">Website</Label>
-                            <Input id="website" defaultValue={user.website} />
+                            <Input
+                              id="website"
+                              value={formData.website}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, website: e.target.value }))}
+                            />
                           </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="bio">Bio</Label>
-                          <Textarea id="bio" rows={4} defaultValue={user.bio} />
+                          <Textarea
+                            id="bio"
+                            rows={4}
+                            value={formData.bio}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, bio: e.target.value }))}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Social Media</Label>
@@ -196,19 +254,46 @@ export default function ProfilePage() {
                               <Label htmlFor="twitter" className="text-xs">
                                 Twitter
                               </Label>
-                              <Input id="twitter" defaultValue={user.socialMedia.twitter} />
+                              <Input
+                                id="twitter"
+                                value={formData.socialMedia.twitter}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    socialMedia: { ...prev.socialMedia, twitter: e.target.value },
+                                  }))
+                                }
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="linkedin" className="text-xs">
                                 LinkedIn
                               </Label>
-                              <Input id="linkedin" defaultValue={user.socialMedia.linkedin} />
+                              <Input
+                                id="linkedin"
+                                value={formData.socialMedia.linkedin}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    socialMedia: { ...prev.socialMedia, linkedin: e.target.value },
+                                  }))
+                                }
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="facebook" className="text-xs">
                                 Facebook
                               </Label>
-                              <Input id="facebook" defaultValue={user.socialMedia.facebook} />
+                              <Input
+                                id="facebook"
+                                value={formData.socialMedia.facebook}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    socialMedia: { ...prev.socialMedia, facebook: e.target.value },
+                                  }))
+                                }
+                              />
                             </div>
                           </div>
                         </div>
@@ -218,32 +303,32 @@ export default function ProfilePage() {
                         <div className="grid gap-6 md:grid-cols-2">
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Full Name</h3>
-                            <p className="mt-1">{user.name}</p>
+                            <p className="mt-1">{user ? `${user.firstName} ${user.lastName}` : ""}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
-                            <p className="mt-1">{user.email}</p>
+                            <p className="mt-1">{user?.email}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Phone</h3>
-                            <p className="mt-1">{user.phone}</p>
+                            <p className="mt-1">{user?.phone}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Address</h3>
-                            <p className="mt-1">{user.address}</p>
+                            <p className="mt-1">{user?.address}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Occupation</h3>
-                            <p className="mt-1">{user.occupation}</p>
+                            <p className="mt-1">{user?.occupation}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground">Website</h3>
-                            <p className="mt-1">{user.website}</p>
+                            <p className="mt-1">{user?.website}</p>
                           </div>
                         </div>
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground">Bio</h3>
-                          <p className="mt-1">{user.bio}</p>
+                          <p className="mt-1">{user?.bio}</p>
                         </div>
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground">Social Media</h3>
@@ -263,7 +348,7 @@ export default function ProfilePage() {
                               >
                                 <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
                               </svg>
-                              <span>{user.socialMedia.twitter}</span>
+                              <span>{user?.socialMedia?.twitter}</span>
                             </Badge>
                             <Badge variant="secondary" className="flex items-center gap-1">
                               <svg
@@ -282,7 +367,7 @@ export default function ProfilePage() {
                                 <rect width="4" height="12" x="2" y="9" />
                                 <circle cx="4" cy="4" r="2" />
                               </svg>
-                              <span>{user.socialMedia.linkedin}</span>
+                              <span>{user?.socialMedia?.linkedin}</span>
                             </Badge>
                             <Badge variant="secondary" className="flex items-center gap-1">
                               <svg
@@ -299,7 +384,7 @@ export default function ProfilePage() {
                               >
                                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                               </svg>
-                              <span>{user.socialMedia.facebook}</span>
+                              <span>{user?.socialMedia?.facebook}</span>
                             </Badge>
                           </div>
                         </div>
@@ -363,22 +448,22 @@ export default function ProfilePage() {
                         {[
                           {
                             action: "Login",
-                            date: "Today, 10:30 AM",
+                            date: new Date().toISOString(),
                             details: "Chrome on Windows • Harare, Zimbabwe",
                           },
                           {
                             action: "Password Changed",
-                            date: "March 15, 2023",
+                            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
                             details: "Chrome on Windows • Harare, Zimbabwe",
                           },
                           {
                             action: "Profile Updated",
-                            date: "February 28, 2023",
+                            date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
                             details: "Chrome on Windows • Harare, Zimbabwe",
                           },
                           {
                             action: "Account Created",
-                            date: "January 10, 2023",
+                            date: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
                             details: "Chrome on Windows • Harare, Zimbabwe",
                           },
                         ].map((activity, index) => (
@@ -388,7 +473,7 @@ export default function ProfilePage() {
                             </div>
                             <div>
                               <p className="font-medium">{activity.action}</p>
-                              <p className="text-sm text-muted-foreground">{activity.date}</p>
+                              <p className="text-sm text-muted-foreground">{format(new Date(activity.date), "PPp")}</p>
                               <p className="text-sm text-muted-foreground">{activity.details}</p>
                             </div>
                           </div>
@@ -403,7 +488,16 @@ export default function ProfilePage() {
                   <Button variant="outline" onClick={() => setIsEditing(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={() => setIsEditing(false)}>Save Changes</Button>
+                  <Button onClick={handleSaveProfile} disabled={isUpdating}>
+                    {isUpdating ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
                 </CardFooter>
               )}
             </Card>
@@ -413,4 +507,3 @@ export default function ProfilePage() {
     </DashboardLayout>
   )
 }
-

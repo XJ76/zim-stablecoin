@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { DollarSign, Eye, EyeOff, ArrowRight, Check, Lock, Mail, User, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,13 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeSelector } from "@/components/theme-selector"
 import { useTheme } from "@/components/theme-provider"
+import { useApp } from "@/context/app-context"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const { login, register, isAuthenticated } = useApp()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("login")
@@ -27,10 +33,19 @@ export default function LoginPage() {
   const [formErrors, setFormErrors] = useState({
     email: "",
     password: "",
+    firstName: "",
+    lastName: "",
   })
   const [passwordStrength, setPasswordStrength] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { theme } = useTheme()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard")
+    }
+  }, [isAuthenticated, router])
 
   // Background animation using canvas directly instead of React state
   useEffect(() => {
@@ -159,6 +174,8 @@ export default function LoginPage() {
     const errors = {
       email: "",
       password: "",
+      firstName: "",
+      lastName: "",
     }
 
     // Email validation
@@ -175,22 +192,69 @@ export default function LoginPage() {
       errors.password = "Password must be at least 6 characters"
     }
 
+    // First name and last name validation for registration
+    if (activeTab === "register") {
+      if (!formState.firstName) {
+        errors.firstName = "First name is required"
+      }
+      if (!formState.lastName) {
+        errors.lastName = "Last name is required"
+      }
+    }
+
     setFormErrors(errors)
-    return !errors.email && !errors.password
+    return !Object.values(errors).some((error) => error)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) return
 
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      if (activeTab === "login") {
+        const success = await login(formState.email, formState.password)
+        if (success) {
+          router.push("/dashboard")
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please try again.",
+            variant: "destructive",
+          })
+        }
+      } else {
+        const success = await register({
+          firstName: formState.firstName,
+          lastName: formState.lastName,
+          email: formState.email,
+          password: formState.password,
+        })
+        if (success) {
+          toast({
+            title: "Registration Successful",
+            description: "Your account has been created. Welcome to Zimbabwe Stablecoin!",
+          })
+          router.push("/dashboard")
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: "There was an error creating your account. Please try again.",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      window.location.href = "/dashboard"
-    }, 1500)
+    }
   }
 
   return (
@@ -353,8 +417,9 @@ export default function LoginPage() {
                                 placeholder="Tendai"
                                 value={formState.firstName}
                                 onChange={handleInputChange}
-                                required
+                                className={formErrors.firstName ? "border-red-500" : ""}
                               />
+                              {formErrors.firstName && <p className="text-xs text-red-500">{formErrors.firstName}</p>}
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="last-name">Last name</Label>
@@ -364,8 +429,9 @@ export default function LoginPage() {
                                 placeholder="Moyo"
                                 value={formState.lastName}
                                 onChange={handleInputChange}
-                                required
+                                className={formErrors.lastName ? "border-red-500" : ""}
                               />
+                              {formErrors.lastName && <p className="text-xs text-red-500">{formErrors.lastName}</p>}
                             </div>
                           </div>
                           <div className="space-y-2">
@@ -382,7 +448,6 @@ export default function LoginPage() {
                                 value={formState.email}
                                 onChange={handleInputChange}
                                 className={formErrors.email ? "border-red-500" : ""}
-                                required
                               />
                               {formState.email && !formErrors.email && (
                                 <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
@@ -404,7 +469,6 @@ export default function LoginPage() {
                                 value={formState.password}
                                 onChange={handleInputChange}
                                 className={formErrors.password ? "border-red-500" : ""}
-                                required
                               />
                               <Button
                                 type="button"
@@ -502,4 +566,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

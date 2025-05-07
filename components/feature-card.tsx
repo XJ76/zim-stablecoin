@@ -25,4 +25,3 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
     </motion.div>
   )
 }
-

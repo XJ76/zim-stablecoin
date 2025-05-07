@@ -1,9 +1,11 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowLeft, Moon, Palette, Sun } from "lucide-react"
+import { ArrowLeft, Moon, Palette, Sun, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,19 +17,219 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ThemeSelector } from "@/components/theme-selector"
 import { useTheme } from "@/components/theme-provider"
 import DashboardLayout from "@/components/dashboard-layout"
+import { useApp } from "@/context/app-context"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
+  const {
+    user,
+    updateUserProfile,
+    updateSecuritySettings,
+    updateDisplaySettings,
+    updateAccentColor,
+    logoutAllDevices,
+  } = useApp()
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("general")
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [marketingEmails, setMarketingEmails] = useState(false)
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false)
-  const [biometricLogin, setBiometricLogin] = useState(true)
-  const [autoLock, setAutoLock] = useState(true)
-  const [language, setLanguage] = useState("en")
-  const [currency, setCurrency] = useState("USD")
-  const [dateFormat, setDateFormat] = useState("MM/DD/YYYY")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isLoggingOutAllDevices, setIsLoggingOutAllDevices] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  // Form states
+  const [formData, setFormData] = useState({
+    language: user?.settings?.language || "en",
+    currency: user?.settings?.currency || "USD",
+    dateFormat: user?.settings?.dateFormat || "MM/DD/YYYY",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    notifications: {
+      email: user?.settings?.notifications?.email ?? true,
+      push: user?.settings?.notifications?.push ?? true,
+      marketing: user?.settings?.notifications?.marketing ?? false,
+    },
+    security: {
+      twoFactor: user?.settings?.security?.twoFactor ?? false,
+      biometricLogin: user?.settings?.security?.biometricLogin ?? true,
+      autoLock: user?.settings?.security?.autoLock ?? true,
+    },
+    display: {
+      compactMode: user?.settings?.display?.compactMode ?? false,
+      largeText: user?.settings?.display?.largeText ?? false,
+      reduceMotion: user?.settings?.display?.reduceMotion ?? false,
+    },
+    accentColor: user?.settings?.accentColor || "#0ea5e9",
+  })
+
+  const handleSaveGeneralSettings = async () => {
+    setIsUpdating(true)
+    try {
+      await updateUserProfile({
+        email: formData.email,
+        phone: formData.phone,
+        settings: {
+          ...user?.settings,
+          language: formData.language,
+          currency: formData.currency,
+          dateFormat: formData.dateFormat,
+        },
+      })
+      toast({
+        title: "Settings saved",
+        description: "Your general settings have been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error saving your settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleSaveNotificationSettings = async () => {
+    setIsUpdating(true)
+    try {
+      await updateUserProfile({
+        settings: {
+          ...user?.settings,
+          notifications: formData.notifications,
+        },
+      })
+      toast({
+        title: "Notification settings saved",
+        description: "Your notification preferences have been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error saving your notification settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleSaveSecuritySettings = async () => {
+    setIsUpdating(true)
+    try {
+      await updateSecuritySettings(formData.security)
+      toast({
+        title: "Security settings saved",
+        description: "Your security settings have been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error saving your security settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleSaveDisplaySettings = async () => {
+    setIsUpdating(true)
+    try {
+      await updateDisplaySettings(formData.display)
+      toast({
+        title: "Display settings saved",
+        description: "Your display settings have been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error saving your display settings. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirm password must match.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      // In a real app, we would call an API to change the password
+      // For demo purposes, we'll just simulate success
+      setTimeout(() => {
+        toast({
+          title: "Password changed",
+          description: "Your password has been changed successfully.",
+        })
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+        setIsChangingPassword(false)
+      }, 1000)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error changing your password. Please try again.",
+        variant: "destructive",
+      })
+      setIsChangingPassword(false)
+    }
+  }
+
+  const handleLogoutAllDevices = async () => {
+    setIsLoggingOutAllDevices(true)
+    try {
+      await logoutAllDevices()
+      toast({
+        title: "Logged out from all devices",
+        description: "You have been logged out from all devices successfully.",
+      })
+      // Redirect to login page
+      window.location.href = "/login"
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error logging out from all devices. Please try again.",
+        variant: "destructive",
+      })
+      setIsLoggingOutAllDevices(false)
+    }
+  }
+
+  const handleAccentColorChange = async (color: string) => {
+    setFormData((prev) => ({ ...prev, accentColor: color }))
+    try {
+      await updateAccentColor(color)
+      toast({
+        title: "Accent color updated",
+        description: "Your accent color has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error updating your accent color. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -68,7 +270,10 @@ export default function SettingsPage() {
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="language">Language</Label>
-                        <Select value={language} onValueChange={setLanguage}>
+                        <Select
+                          value={formData.language}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, language: value }))}
+                        >
                           <SelectTrigger id="language">
                             <SelectValue placeholder="Select language" />
                           </SelectTrigger>
@@ -81,7 +286,10 @@ export default function SettingsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="currency">Currency</Label>
-                        <Select value={currency} onValueChange={setCurrency}>
+                        <Select
+                          value={formData.currency}
+                          onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}
+                        >
                           <SelectTrigger id="currency">
                             <SelectValue placeholder="Select currency" />
                           </SelectTrigger>
@@ -98,7 +306,11 @@ export default function SettingsPage() {
                     <h3 className="text-lg font-medium">Date & Time</h3>
                     <div className="space-y-2">
                       <Label htmlFor="date-format">Date Format</Label>
-                      <RadioGroup value={dateFormat} onValueChange={setDateFormat} className="flex flex-col space-y-2">
+                      <RadioGroup
+                        value={formData.dateFormat}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, dateFormat: value }))}
+                        className="flex flex-col space-y-2"
+                      >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="MM/DD/YYYY" id="date-format-1" />
                           <Label htmlFor="date-format-1">MM/DD/YYYY</Label>
@@ -124,18 +336,34 @@ export default function SettingsPage() {
                           id="email"
                           type="email"
                           placeholder="your.email@example.com"
-                          defaultValue="tendai.moyo@example.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" type="tel" placeholder="+263 77 123 4567" defaultValue="+263 77 123 4567" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="+263 77 123 4567"
+                          value={formData.phone}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                        />
                       </div>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button>Save Changes</Button>
+                  <Button onClick={handleSaveGeneralSettings} disabled={isUpdating}>
+                    {isUpdating ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
                 </CardFooter>
               </Card>
             </motion.div>
@@ -160,8 +388,13 @@ export default function SettingsPage() {
                       </div>
                       <Switch
                         id="email-notifications"
-                        checked={emailNotifications}
-                        onCheckedChange={setEmailNotifications}
+                        checked={formData.notifications.email}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            notifications: { ...prev.notifications, email: checked },
+                          }))
+                        }
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -171,7 +404,16 @@ export default function SettingsPage() {
                           Receive emails about new features and promotions
                         </p>
                       </div>
-                      <Switch id="marketing-emails" checked={marketingEmails} onCheckedChange={setMarketingEmails} />
+                      <Switch
+                        id="marketing-emails"
+                        checked={formData.notifications.marketing}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            notifications: { ...prev.notifications, marketing: checked },
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 </div>
@@ -188,8 +430,13 @@ export default function SettingsPage() {
                       </div>
                       <Switch
                         id="push-notifications"
-                        checked={pushNotifications}
-                        onCheckedChange={setPushNotifications}
+                        checked={formData.notifications.push}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            notifications: { ...prev.notifications, push: checked },
+                          }))
+                        }
                       />
                     </div>
                   </div>
@@ -242,7 +489,16 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Save Preferences</Button>
+                <Button onClick={handleSaveNotificationSettings} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Preferences"
+                  )}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -259,19 +515,51 @@ export default function SettingsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="current-password">Current Password</Label>
-                      <Input id="current-password" type="password" />
+                      <Input
+                        id="current-password"
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="new-password">New Password</Label>
-                      <Input id="new-password" type="password" />
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
+                      />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input id="confirm-password" type="password" />
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                      />
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Change Password
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleChangePassword}
+                    disabled={
+                      isChangingPassword ||
+                      !passwordData.currentPassword ||
+                      !passwordData.newPassword ||
+                      !passwordData.confirmPassword
+                    }
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                        Changing...
+                      </>
+                    ) : (
+                      "Change Password"
+                    )}
                   </Button>
                 </div>
 
@@ -282,9 +570,18 @@ export default function SettingsPage() {
                       <Label htmlFor="two-factor">Enable 2FA</Label>
                       <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
                     </div>
-                    <Switch id="two-factor" checked={twoFactorAuth} onCheckedChange={setTwoFactorAuth} />
+                    <Switch
+                      id="two-factor"
+                      checked={formData.security.twoFactor}
+                      onCheckedChange={(checked) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          security: { ...prev.security, twoFactor: checked },
+                        }))
+                      }
+                    />
                   </div>
-                  {twoFactorAuth && (
+                  {formData.security.twoFactor && (
                     <div className="rounded-lg border p-4">
                       <p className="mb-4 text-sm">
                         Two-factor authentication adds an extra layer of security to your account. In addition to your
@@ -307,7 +604,16 @@ export default function SettingsPage() {
                           Use fingerprint or face recognition to log in on mobile
                         </p>
                       </div>
-                      <Switch id="biometric-login" checked={biometricLogin} onCheckedChange={setBiometricLogin} />
+                      <Switch
+                        id="biometric-login"
+                        checked={formData.security.biometricLogin}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            security: { ...prev.security, biometricLogin: checked },
+                          }))
+                        }
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -316,7 +622,16 @@ export default function SettingsPage() {
                           Automatically lock the app after 5 minutes of inactivity
                         </p>
                       </div>
-                      <Switch id="auto-lock" checked={autoLock} onCheckedChange={setAutoLock} />
+                      <Switch
+                        id="auto-lock"
+                        checked={formData.security.autoLock}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            security: { ...prev.security, autoLock: checked },
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 </div>
@@ -331,14 +646,35 @@ export default function SettingsPage() {
                       </div>
                       <div className="flex h-2 w-2 items-center justify-center rounded-full bg-green-500"></div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      Log Out of All Other Devices
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLogoutAllDevices}
+                      disabled={isLoggingOutAllDevices}
+                    >
+                      {isLoggingOutAllDevices ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                          Logging out...
+                        </>
+                      ) : (
+                        "Log Out of All Other Devices"
+                      )}
                     </Button>
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Save Security Settings</Button>
+                <Button onClick={handleSaveSecuritySettings} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Security Settings"
+                  )}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -399,21 +735,48 @@ export default function SettingsPage() {
                           Reduce spacing and padding throughout the interface
                         </p>
                       </div>
-                      <Switch id="compact-mode" />
+                      <Switch
+                        id="compact-mode"
+                        checked={formData.display.compactMode}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            display: { ...prev.display, compactMode: checked },
+                          }))
+                        }
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label htmlFor="large-text">Large Text</Label>
                         <p className="text-sm text-muted-foreground">Increase text size for better readability</p>
                       </div>
-                      <Switch id="large-text" />
+                      <Switch
+                        id="large-text"
+                        checked={formData.display.largeText}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            display: { ...prev.display, largeText: checked },
+                          }))
+                        }
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label htmlFor="reduce-motion">Reduce Motion</Label>
                         <p className="text-sm text-muted-foreground">Minimize animations throughout the app</p>
                       </div>
-                      <Switch id="reduce-motion" />
+                      <Switch
+                        id="reduce-motion"
+                        checked={formData.display.reduceMotion}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            display: { ...prev.display, reduceMotion: checked },
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 </div>
@@ -421,20 +784,43 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Accent Color</h3>
                   <div className="grid grid-cols-5 gap-2">
-                    {["#000000", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444"].map((color) => (
+                    {[
+                      { color: "#000000", name: "Black" },
+                      { color: "#0ea5e9", name: "Blue" },
+                      { color: "#10b981", name: "Green" },
+                      { color: "#f59e0b", name: "Amber" },
+                      { color: "#ef4444", name: "Red" },
+                    ].map((colorOption) => (
                       <div
-                        key={color}
-                        className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border"
-                        style={{ backgroundColor: color }}
+                        key={colorOption.color}
+                        className={`flex h-10 w-full cursor-pointer items-center justify-center rounded-md border ${
+                          formData.accentColor === colorOption.color ? "ring-2 ring-offset-2" : ""
+                        }`}
+                        style={{ backgroundColor: colorOption.color }}
+                        onClick={() => handleAccentColorChange(colorOption.color)}
+                        title={colorOption.name}
                       >
-                        <div className="h-6 w-6 rounded-full bg-white"></div>
+                        {formData.accentColor === colorOption.color && (
+                          <div className="h-6 w-6 rounded-full bg-white flex items-center justify-center">
+                            <Check className="h-4 w-4 text-black" />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Save Appearance Settings</Button>
+                <Button onClick={handleSaveDisplaySettings} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Appearance Settings"
+                  )}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -443,4 +829,3 @@ export default function SettingsPage() {
     </DashboardLayout>
   )
 }
-

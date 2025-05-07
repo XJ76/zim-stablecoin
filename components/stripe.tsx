@@ -46,4 +46,3 @@ export function Stripe({ children, options, className }: StripeProps) {
     </div>
   )
 }
-

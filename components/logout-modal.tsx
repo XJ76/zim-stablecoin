@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { useApp } from "@/context/app-context"
 
 interface LogoutModalProps {
   open: boolean
@@ -20,11 +21,13 @@ interface LogoutModalProps {
 
 export function LogoutModal({ open, onClose }: LogoutModalProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { logout } = useApp()
 
   const handleLogout = () => {
     setIsLoggingOut(true)
     // Simulate logout process
     setTimeout(() => {
+      logout()
       window.location.href = "/login"
     }, 1000)
   }
@@ -65,4 +68,3 @@ export function LogoutModal({ open, onClose }: LogoutModalProps) {
     </AlertDialog>
   )
 }
-

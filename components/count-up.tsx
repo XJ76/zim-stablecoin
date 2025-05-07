@@ -42,4 +42,3 @@ export default function CountUp({ end, start = 0, duration = 2000, prefix = "", 
     </span>
   )
 }
-
