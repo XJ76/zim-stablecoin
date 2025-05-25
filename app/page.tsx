@@ -1,33 +1,43 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import {
+  AnimatePresence,
+  motion,
+  useScroll,
+  useTransform,
+} from 'framer-motion';
 import {
   ArrowRight,
-  ChevronDown,
-  DollarSign,
-  Shield,
-  Zap,
   ArrowUpDown,
   BarChart3,
-  Globe,
-  Play,
-  Pause,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useInView } from "react-intersection-observer"
-import MainNav from "@/components/main-nav"
-import CurrencyConverter from "@/components/currency-converter"
-import LiveRatesTicker from "@/components/live-rates-ticker"
-import ZimbabweMap from "@/components/zimbabwe-map"
-import CountUp from "@/components/count-up"
-import { ThemeSelector } from "@/components/theme-selector"
-import { useTheme } from "@/components/theme-provider"
+  DollarSign,
+  Globe,
+  Pause,
+  Play,
+  Shield,
+  Zap,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useInView } from 'react-intersection-observer';
+
+import CountUp from '@/components/count-up';
+import CurrencyConverter from '@/components/currency-converter';
+import { FeedbackSystem } from '@/components/feedback-system';
+import LiveRatesTicker from '@/components/live-rates-ticker';
+import MainNav from '@/components/main-nav';
+import { useTheme } from '@/components/theme-provider';
+import { ThemeSelector } from '@/components/theme-selector';
+import { Button } from '@/components/ui/button';
+import ZimbabweMap from '@/components/zimbabwe-map';
 
 // Testimonial data
 const testimonials = [
@@ -684,183 +694,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Tabs Section */}
+      {/* Feedback Section */}
       <section className="bg-muted/30 py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <div className="mb-10 text-center">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Learn More</h2>
+            <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary mb-4">
+              Community
+            </div>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Feedback & Support</h2>
             <p className="mx-auto mt-4 max-w-[700px] text-muted-foreground md:text-xl">
-              Discover how our stablecoin platform can benefit you.
+              Share your thoughts, get help from the community, or reach out to our support team.
             </p>
           </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mx-auto max-w-4xl">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="about">About</TabsTrigger>
-              <TabsTrigger value="benefits">Benefits</TabsTrigger>
-              <TabsTrigger value="technology">Technology</TabsTrigger>
-            </TabsList>
-
-            <Card className="mt-6 border-0 shadow-none">
-              <CardContent className="p-0">
-                <TabsContent value="about" className="mt-0 rounded-lg border bg-background p-6">
-                  <motion.div
-                    key="about"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4"
-                  >
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div>
-                        <h3 className="mb-3 text-xl font-bold">What is Zimbabwe Stablecoin?</h3>
-                        <p className="text-muted-foreground">
-                          Zimbabwe Stablecoin is a digital currency specifically designed for the Zimbabwean market. It
-                          maintains a stable value by being pegged to a basket of stable assets, providing users with a
-                          reliable alternative to the volatile local currency.
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="mb-3 text-xl font-bold">Why We Created It</h3>
-                        <p className="text-muted-foreground">
-                          After years of hyperinflation and economic instability in Zimbabwe, we recognized the need for
-                          a stable, secure, and accessible financial tool that could help individuals and businesses
-                          protect their wealth and conduct transactions with confidence.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-6 rounded-lg bg-muted/50 p-4">
-                      <h4 className="mb-2 font-semibold">Our Mission</h4>
-                      <p className="text-muted-foreground">
-                        To provide financial stability and inclusion to all Zimbabweans through innovative blockchain
-                        technology, enabling economic growth and prosperity across the nation.
-                      </p>
-                    </div>
-                  </motion.div>
-                </TabsContent>
-
-                <TabsContent value="benefits" className="mt-0 rounded-lg border bg-background p-6">
-                  <motion.div
-                    key="benefits"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4"
-                  >
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border p-4">
-                        <h3 className="mb-2 text-lg font-semibold">For Individuals</h3>
-                        <ul className="space-y-2">
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Protection against inflation and currency devaluation</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Secure storage of value without needing a bank account</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Fast and affordable remittances from abroad</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Easy conversion to local currency when needed</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div className="rounded-lg border p-4">
-                        <h3 className="mb-2 text-lg font-semibold">For Businesses</h3>
-                        <ul className="space-y-2">
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Stable pricing without daily adjustments</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Reduced currency risk for imports and exports</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Simplified payroll and vendor payments</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <div className="mt-1 h-2 w-2 rounded-full bg-primary"></div>
-                            <span>Access to international markets and suppliers</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg bg-muted/50 p-4">
-                      <h4 className="mb-2 font-semibold">Economic Impact</h4>
-                      <p className="text-muted-foreground">
-                        By providing a stable medium of exchange, our stablecoin helps reduce economic uncertainty,
-                        encourages savings, and facilitates investment in Zimbabwe's future.
-                      </p>
-                    </div>
-                  </motion.div>
-                </TabsContent>
-
-                <TabsContent value="technology" className="mt-0 rounded-lg border bg-background p-6">
-                  <motion.div
-                    key="technology"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <h3 className="mb-3 text-xl font-bold">Blockchain Technology</h3>
-                      <p className="text-muted-foreground">
-                        Our stablecoin is built on a secure, scalable blockchain that ensures transparency,
-                        immutability, and fast transaction processing. Every transaction is recorded on a distributed
-                        ledger, providing an unalterable history that can be verified by anyone.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="rounded-lg border p-4">
-                        <h4 className="mb-2 font-semibold">Security</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Advanced cryptography and multi-signature wallets protect user funds, while regular security
-                          audits ensure the platform remains secure.
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border p-4">
-                        <h4 className="mb-2 font-semibold">Stability Mechanism</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Our stablecoin maintains its value through a combination of asset backing and algorithmic
-                          stabilization mechanisms.
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg border p-4">
-                        <h4 className="mb-2 font-semibold">Scalability</h4>
-                        <p className="text-sm text-muted-foreground">
-                          The platform can handle thousands of transactions per second, ensuring it can grow with
-                          Zimbabwe's needs.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg bg-muted/50 p-4">
-                      <h4 className="mb-2 font-semibold">Regulatory Compliance</h4>
-                      <p className="text-muted-foreground">
-                        We work closely with Zimbabwean financial authorities to ensure full compliance with all
-                        relevant regulations, including KYC and AML requirements.
-                      </p>
-                    </div>
-                  </motion.div>
-                </TabsContent>
-              </CardContent>
-            </Card>
-          </Tabs>
+          <FeedbackSystem />
         </div>
       </section>
 
