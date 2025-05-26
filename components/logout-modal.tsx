@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { LogOut } from "lucide-react"
+import { AlertTriangle } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,57 +11,31 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useApp } from "@/context/app-context"
+} from '@/components/ui/alert-dialog';
 
 interface LogoutModalProps {
-  open: boolean
+  isOpen: boolean
   onClose: () => void
+  onConfirm: () => void
 }
 
-export function LogoutModal({ open, onClose }: LogoutModalProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const { logout } = useApp()
-
-  const handleLogout = () => {
-    setIsLoggingOut(true)
-    // Simulate logout process
-    setTimeout(() => {
-      logout()
-      window.location.href = "/login"
-    }, 1000)
-  }
-
+export function LogoutModal({ isOpen, onClose, onConfirm }: LogoutModalProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onClose}>
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <LogOut className="h-5 w-5 text-destructive" />
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
             Confirm Logout
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to log out of your account? You will need to enter your credentials to log back in.
+            Are you sure you want to log out? You will need to log in again to access your account.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoggingOut}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault()
-              handleLogout()
-            }}
-            disabled={isLoggingOut}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isLoggingOut ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
-                Logging out...
-              </>
-            ) : (
-              "Log out"
-            )}
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-red-500 hover:bg-red-600">
+            Logout
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

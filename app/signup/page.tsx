@@ -9,13 +9,14 @@ import {
 
 import { motion } from 'framer-motion';
 import {
-  ArrowRight,
   Check,
   DollarSign,
   Eye,
   EyeOff,
   Lock,
   Mail,
+  User,
+  UserPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,20 +33,25 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useApp } from '@/context/app-context';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { login, isAuthenticated } = useApp()
+  const { register, isAuthenticated } = useApp()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formState, setFormState] = useState({
     email: "",
     password: "",
+    firstName: "",
+    lastName: "",
   })
   const [formErrors, setFormErrors] = useState({
     email: "",
     password: "",
+    firstName: "",
+    lastName: "",
   })
+  const [passwordStrength, setPasswordStrength] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { theme } = useTheme()
 
@@ -56,109 +62,6 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router])
 
-  // Background animation using canvas directly instead of React state
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    // Set canvas dimensions
-    const setCanvasDimensions = () => {
-      const devicePixelRatio = window.devicePixelRatio || 1
-      canvas.width = window.innerWidth * devicePixelRatio
-      canvas.height = window.innerHeight * devicePixelRatio
-      ctx.scale(devicePixelRatio, devicePixelRatio)
-    }
-
-    setCanvasDimensions()
-    window.addEventListener("resize", setCanvasDimensions)
-
-    // Create particles
-    const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
-    const particles: Array<{
-      x: number
-      y: number
-      size: number
-      vx: number
-      vy: number
-      color: string
-    }> = []
-
-    for (let i = 0; i < 50; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 3 + 1,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        color: isDark
-          ? `rgba(255, 255, 255, ${Math.random() * 0.2 + 0.1})`
-          : `rgba(0, 0, 0, ${Math.random() * 0.1 + 0.05})`,
-      })
-    }
-
-    // Animation loop
-    let animationId: number
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // Draw connections
-      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.03)"
-      ctx.lineWidth = 1
-
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance < 150) {
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.stroke()
-          }
-        }
-      }
-
-      // Update and draw particles
-      for (let i = 0; i < particles.length; i++) {
-        const particle = particles[i]
-
-        // Update position
-        particle.x += particle.vx
-        particle.y += particle.vy
-
-        // Bounce off edges
-        if (particle.x > canvas.width || particle.x < 0) {
-          particle.vx = -particle.vx
-        }
-        if (particle.y > canvas.height || particle.y < 0) {
-          particle.vy = -particle.vy
-        }
-
-        // Draw particle
-        ctx.fillStyle = particle.color
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      animationId = requestAnimationFrame(animate)
-    }
-
-    animate()
-
-    // Cleanup
-    return () => {
-      cancelAnimationFrame(animationId)
-      window.removeEventListener("resize", setCanvasDimensions)
-    }
-  }, [theme]) // Only re-run when theme changes
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormState((prev) => ({ ...prev, [name]: value }))
@@ -167,12 +70,24 @@ export default function LoginPage() {
     if (formErrors[name as keyof typeof formErrors]) {
       setFormErrors((prev) => ({ ...prev, [name]: "" }))
     }
+
+    // Password strength check
+    if (name === "password") {
+      let strength = 0
+      if (value.length > 6) strength += 1
+      if (/[A-Z]/.test(value)) strength += 1
+      if (/[0-9]/.test(value)) strength += 1
+      if (/[^A-Za-z0-9]/.test(value)) strength += 1
+      setPasswordStrength(strength)
+    }
   }
 
   const validateForm = () => {
     const errors = {
       email: "",
       password: "",
+      firstName: "",
+      lastName: "",
     }
 
     // Email validation
@@ -185,6 +100,16 @@ export default function LoginPage() {
     // Password validation
     if (!formState.password) {
       errors.password = "Password is required"
+    } else if (formState.password.length < 6) {
+      errors.password = "Password must be at least 6 characters"
+    }
+
+    // First name and last name validation
+    if (!formState.firstName) {
+      errors.firstName = "First name is required"
+    }
+    if (!formState.lastName) {
+      errors.lastName = "Last name is required"
     }
 
     setFormErrors(errors)
@@ -199,13 +124,22 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const success = await login(formState.email, formState.password)
+      const success = await register({
+        firstName: formState.firstName,
+        lastName: formState.lastName,
+        email: formState.email,
+        password: formState.password,
+      })
       if (success) {
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created. Welcome to Zimbabwe Stablecoin!",
+        })
         router.push("/dashboard")
       } else {
         toast({
-          title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
+          title: "Registration Failed",
+          description: "There was an error creating your account. Please try again.",
           variant: "destructive",
         })
       }
@@ -249,7 +183,7 @@ export default function LoginPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              Welcome back
+              Create an account
             </motion.h1>
             <motion.p
               className="text-muted-foreground"
@@ -257,7 +191,7 @@ export default function LoginPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
-              Sign in to your account to continue
+              Join thousands of Zimbabweans using our stablecoin
             </motion.p>
           </div>
 
@@ -265,6 +199,35 @@ export default function LoginPage() {
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first-name" className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        First name
+                      </Label>
+                      <Input
+                        id="first-name"
+                        name="firstName"
+                        placeholder="Tendai"
+                        value={formState.firstName}
+                        onChange={handleInputChange}
+                        className={formErrors.firstName ? "border-red-500" : ""}
+                      />
+                      {formErrors.firstName && <p className="text-xs text-red-500">{formErrors.firstName}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last-name">Last name</Label>
+                      <Input
+                        id="last-name"
+                        name="lastName"
+                        placeholder="Moyo"
+                        value={formState.lastName}
+                        onChange={handleInputChange}
+                        className={formErrors.lastName ? "border-red-500" : ""}
+                      />
+                      {formErrors.lastName && <p className="text-xs text-red-500">{formErrors.lastName}</p>}
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
@@ -322,20 +285,31 @@ export default function LoginPage() {
                     {isLoading ? (
                       <>
                         <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
-                        Signing in...
+                        Creating account...
                       </>
                     ) : (
                       <>
-                        Sign in
-                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        Create account
+                        <UserPlus className="ml-2 h-4 w-4" />
                       </>
                     )}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
-                    Don't have an account?{" "}
-                    <Link href="/signup" className="underline underline-offset-2 hover:text-primary">
-                      Sign up
+                    Already have an account?{" "}
+                    <Link href="/login" className="underline underline-offset-2 hover:text-primary">
+                      Sign in
                     </Link>
+                  </p>
+                  <p className="text-center text-xs text-muted-foreground">
+                    By creating an account, you agree to our{" "}
+                    <Link href="#" className="underline underline-offset-2 hover:text-primary">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="#" className="underline underline-offset-2 hover:text-primary">
+                      Privacy Policy
+                    </Link>
+                    .
                   </p>
                 </div>
               </form>
@@ -345,4 +319,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-}
+} 

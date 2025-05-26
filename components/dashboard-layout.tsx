@@ -1,10 +1,8 @@
 "use client"
 
-import type React from "react"
+import type React from 'react';
+import { useState } from 'react';
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   BarChart3,
   CreditCard,
@@ -17,17 +15,29 @@ import {
   Send,
   Settings,
   User,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ThemeSelector } from "@/components/theme-selector"
-import { useLogoutModal } from "@/hooks/use-logout-modal"
-import { LogoutModal } from "@/components/logout-modal"
-import { useApp } from "@/context/app-context"
-import { Notifications } from "@/components/notifications"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+import { LogoutModal } from '@/components/logout-modal';
+import { Notifications } from '@/components/notifications';
+import { ThemeSelector } from '@/components/theme-selector';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { useApp } from '@/context/app-context';
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -35,8 +45,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
-  const { openLogoutModal } = useLogoutModal()
-  const { user, balance, searchTransactions } = useApp()
+  const { user, balance, searchTransactions, logout, showLogoutModal, cancelLogout, confirmLogout } = useApp()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<ReturnType<typeof searchTransactions>>([])
@@ -134,7 +143,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </Link>
                 ))}
                 <button
-                  onClick={openLogoutModal}
+                  onClick={logout}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <LogOut className="h-5 w-5" />
@@ -169,7 +178,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Notifications />
           <ThemeSelector />
           <div className="hidden md:flex">
-            <Button variant="ghost" size="icon" onClick={openLogoutModal}>
+            <Button variant="ghost" size="icon" onClick={logout}>
               <LogOut className="h-5 w-5" />
               <span className="sr-only">Logout</span>
             </Button>
@@ -203,7 +212,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
       <main className="flex-1">{children}</main>
-      <LogoutModal />
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+      />
 
       {/* Search Dialog */}
       <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>

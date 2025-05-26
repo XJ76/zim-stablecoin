@@ -1,9 +1,16 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
-import { v4 as uuidv4 } from "uuid"
-import { useToast } from "@/components/ui/use-toast"
+import type React from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
+
+import { v4 as uuidv4 } from 'uuid';
+
+import { useToast } from '@/components/ui/use-toast';
 
 // Types
 export type TransactionType = "send" | "receive" | "convert" | "add_funds" | "payment_request" | "card_payment"
@@ -136,6 +143,9 @@ interface AppContextType {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
+  confirmLogout: () => void
+  cancelLogout: () => void
+  showLogoutModal: boolean
   logoutAllDevices: () => Promise<boolean>
   register: (userData: {
     firstName: string
@@ -184,6 +194,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [zwlRate] = useState(3500)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   // Load data from localStorage on initial render
   useEffect(() => {
@@ -193,7 +204,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const storedCards = localStorage.getItem("cards")
     const storedNotifications = localStorage.getItem("notifications")
     const storedPaymentRequests = localStorage.getItem("paymentRequests")
-    const storedAuth = localStorage.getItem("isAuthenticated")
 
     if (storedUser) setUser(JSON.parse(storedUser))
     if (storedBalance) setBalance(Number(storedBalance))
@@ -201,7 +211,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (storedCards) setCards(JSON.parse(storedCards))
     if (storedNotifications) setNotifications(JSON.parse(storedNotifications))
     if (storedPaymentRequests) setPaymentRequests(JSON.parse(storedPaymentRequests))
-    if (storedAuth) setIsAuthenticated(storedAuth === "true")
   }, [])
 
   // Update unread notifications count
@@ -217,8 +226,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem("cards", JSON.stringify(cards))
     localStorage.setItem("notifications", JSON.stringify(notifications))
     localStorage.setItem("paymentRequests", JSON.stringify(paymentRequests))
-    localStorage.setItem("isAuthenticated", String(isAuthenticated))
-  }, [user, balance, transactions, cards, notifications, paymentRequests, isAuthenticated])
+  }, [user, balance, transactions, cards, notifications, paymentRequests])
 
   const addTransaction = (transaction: Omit<Transaction, "id" | "date" | "status">) => {
     const newTransaction: Transaction = {
@@ -731,12 +739,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const logout = () => {
+    setShowLogoutModal(true)
+  }
+
+  const confirmLogout = () => {
     setIsAuthenticated(false)
     setUser(null)
+    setShowLogoutModal(false)
     toast({
       title: "Logged Out",
       description: "You have been logged out successfully.",
     })
+    // Redirect to login page
+    window.location.href = "/login"
+  }
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false)
   }
 
   const logoutAllDevices = async (): Promise<boolean> => {
@@ -1515,6 +1534,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthenticated,
         login,
         logout,
+        confirmLogout,
+        cancelLogout,
+        showLogoutModal,
         logoutAllDevices,
         register,
         addFunds,
